@@ -18,26 +18,23 @@ on:
         required: true
         type: choice
         options:
-          - 'oneplus12_v'
-          - 'oneplus12_u'
-          - 'oneplus_ace3_pro_v'
+          - 'oneplus_12'
+          - 'oneplus_ace3_pro'
           - 'oneplus_ace5'
-          - 'oneplus_pad2_v'
-          - 'oneplus_11_v'
-          - 'oneplus_11_u'
-          - 'oneplus_11_t'
-          - 'oneplus_12r_v'
-          - 'oneplus_ace2pro_v'
-          - 'oneplus_ace3_v'
-          - 'oneplus_open_v'
-          - 'oneplus_10t_v'
-          - 'oneplus_11r_v'
-          - 'oneplus_ace2_v'
-          - 'oneplus_ace_pro_v'
-          - 'oneplus_10_pro_v'
-          - 'oneplus_ace_3v_v'
+          - 'oneplus_pad2'
+          - 'oneplus_11'
+          - 'oneplus_12r'
+          - 'oneplus_ace2pro'
+          - 'oneplus_ace3'
+          - 'oneplus_open'
+          - 'oneplus_10t'
+          - 'oneplus_11r'
+          - 'oneplus_ace2'
+          - 'oneplus_ace_pro'
+          - 'oneplus_10_pro'
+          - 'oneplus_ace_3v'
           - ' '
-        default: 'oneplus12_v'
+        default: 'oneplus_12'
       CPUD:
         description: "处理器代号"
         required: true
@@ -66,14 +63,17 @@ on:
           - '5.10'
         default: '6.1'
       lz4kd:
-       description: "是否启用lz4kd"
+       description: "是否启用lz4kd(关闭则启用lz4 + zstd)"
        required: true
-       type: boolean
-       default: true
+       type: choice
+       options:
+          - 'Open'
+          - 'Close'
+       default: 'Close'
         
 jobs:
   build:
-    name: For ${{ github.event.inputs.FEIL }}
+    name: For ${{ github.event.inputs.FEIL }} lz4kd ${{ github.event.inputs.lz4kd }}
     runs-on: ubuntu-latest
     env:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
@@ -92,7 +92,7 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
-      - name: 📦 Configure Git
+      - name: 📦 Configure Git (设置下载账户)
         run: |
          git config --global user.name "bulid"
          git config --global user.email "2210077278@qq.com"
@@ -111,16 +111,16 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-
             
-      - name: 📥 Install repo tool
+      - name: 📥 Install repo tool (下载repo工具)
         run: |
          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
          chmod a+x ~/repo
          sudo mv ~/repo /usr/local/bin/repo
 
-      - name: 📥 Initialize repo and sync （克隆内核源码）
+      - name: 📥 Initialize repo and sync (克隆内核源码)
         run: |
          mkdir kernel_workspace && cd kernel_workspace
-         repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+         repo init -u https://github.com/Xiaomichael/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
          repo sync
          rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
@@ -130,21 +130,21 @@ jobs:
          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/common/scripts/setlocalversion
          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/msm-kernel/scripts/setlocalversion
          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/external/dtc/scripts/setlocalversion
-         sed -i '$s|echo "\$res"|echo "ITZ-Atif"|' kernel_platform/common/scripts/setlocalversion            
-         sed -i '$s|echo "\$res"|echo "ITZ-Atif"|' kernel_platform/msm-kernel/scripts/setlocalversion
-         sed -i '$s|echo "\$res"|echo "ITZ-Atif"|' kernel_platform/external/dtc/scripts/setlocalversion
+         sed -i '$s|echo "\$res"|echo "-oki-xiaoxiaow"|' kernel_platform/common/scripts/setlocalversion            
+         sed -i '$s|echo "\$res"|echo "-oki-xiaoxiaow"|' kernel_platform/msm-kernel/scripts/setlocalversion
+         sed -i '$s|echo "\$res"|echo "-oki-xiaoxiaow"|' kernel_platform/external/dtc/scripts/setlocalversion
           
       - name: ⚙️ Set up SukiSU Ultra (配置 SukiSU Ultra)
         run: |
           cd kernel_workspace/kernel_platform
-          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
+          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
           cd ./KernelSU
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           export KSU_VERSION=$KSU_VERSION
           sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
           
-      - name: 🔧 Set up SUSFS
+      - name: 🔧 Set up SUSFS (配置 SUSFS)
         run: |
           cd kernel_workspace
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
@@ -156,7 +156,12 @@ jobs:
           cp ../kernel_patches/next/syscall_hooks.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
-          if [ "${{ github.event.inputs.lz4kd }}" == "true" ]; then
+          if [ "${{ github.event.inputs.lz4kd }}" == "Close" ]; then
+            cp ../kernel_patches/001-lz4.patch ./common/
+            cp ../kernel_patches/lz4armv8.S ./common/lib
+            cp ../kernel_patches/002-zstd.patch ./common/
+          fi
+          if [ "${{ github.event.inputs.lz4kd }}" == "Open" ]; then
             # Copy lz4k from ShirkNeko
             cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
             cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
@@ -169,14 +174,18 @@ jobs:
           cp ../../kernel_patches/69_hide_stuff.patch ./
           patch -p1 -F 3 < 69_hide_stuff.patch
           patch -p1 -F 3 < syscall_hooks.patch
-          if [ "${{ github.event.inputs.lz4kd }}" == "true" ]; then
+          if [ "${{ github.event.inputs.lz4kd }}" == "Close" ]; then
+            git apply -p1 < 001-lz4.patch || true
+            patch -p1 < 002-zstd.patch || true
+          fi
+          if [ "${{ github.event.inputs.lz4kd }}" == "Open" ]; then
             cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
             patch -p1 -F 3 < lz4kd.patch || true
             cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4k_oplus.patch ./
             patch -p1 -F 3 < lz4k_oplus.patch || true
           fi
           
-      - name: 🔧 Add sched_ext
+      - name: 🔧 Add sched_ext (配置 风驰内核驱动)
         run: |
          cd kernel_workspace/kernel_platform/
          git clone https://github.com/HanKuCha/sched_ext.git
@@ -184,7 +193,7 @@ jobs:
          rm -rf ./sched_ext/.git
          cd common/kernel/sched
 
-      - name: 🔧 Apply new hook & Add configuration
+      - name: 🔧 Apply new hook & Add configuration (配置 一些内核开关)
         run: |
           cd kernel_workspace/kernel_platform
           # Add KSU configuration settings
@@ -209,13 +218,16 @@ jobs:
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          if [ "${{ github.event.inputs.lz4kd }}" == "true" ]; then
+          # Add BBR
+          echo "CONFIG_TCP_CONG_ADVANCED=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_BBR=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_NET_SCH_FQ=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_BIC=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_WESTWOOD=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_HTCP=n" >> ./common/arch/arm64/configs/gki_defconfig
+          if [ "${{ github.event.inputs.lz4kd }}" == "Open" ]; then
             # Add lz4kd
-            echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4K_OPLUS=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_ZRAM_WRITEBACK=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
@@ -229,7 +241,7 @@ jobs:
             export PATH="/usr/lib/ccache:$PATH"
             sudo apt install libelf-dev
             cd kernel_workspace/kernel_platform/common
-            make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole LD=ld.lld  HOSTLD=ld.lld O=out KCFLAGS+=-O2 gki_defconfig all
+            make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole LD=ld.lld  HOSTLD=ld.lld O=out KCFLAGS+=-O2 CONFIG_LTO_CLANG=y CONFIG_LTO_CLANG_THIN=y CONFIG_LTO_CLANG_FULL=n CONFIG_LTO_NONE=n gki_defconfig all
           else
             cd kernel_workspace
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
@@ -244,6 +256,7 @@ jobs:
           dir3="kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-gki/dist/"
           dir4="kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/"
           dir5="kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/"
+          dir6="kernel_workspace/kernel_platform/common/out/arch/arm64/boot/"
           target1="./AnyKernel3/"
           target2="./kernel_workspace/kernel"
 
@@ -257,6 +270,8 @@ jobs:
             image_path="$dir4"Image
           elif find "$dir5" -name "Image" | grep -q "Image"; then
             image_path="$dir5"Image
+          elif find "$dir6" -name "Image" | grep -q "Image"; then
+            image_path="$dir6"Image
           else
             image_path=$(find "./kernel_workspace/kernel_platform/common/out/" -name "Image" | head -n 1)
           fi
@@ -277,7 +292,7 @@ jobs:
       - name: 🛠️ KPM Patching Image Files (KPM 修补 Image 文件)
         run: |
           cd kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist
-          curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
+          curl -LO https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.11.4/patch_linux
           chmod +x patch_linux
           ./patch_linux
           rm -f Image
@@ -285,28 +300,28 @@ jobs:
           cp Image $GITHUB_WORKSPACE/AnyKernel3/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
          
-      - name: 📤 Upload AnyKernel3 with lz4kd
-        if: ${{ github.event.inputs.lz4kd == 'true' }}
+      - name: 📤 Upload AnyKernel3 with lz4kd (上传 AnyKernel3)
+        if: ${{ github.event.inputs.lz4kd == 'Open' }}
         uses: actions/upload-artifact@v4
         with:
          name: AnyKernel3_SukiSU_Ultra_lz4kd_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
          path: ./AnyKernel3/*
          
-      - name: 📤 Upload AnyKernel3
-        if: ${{ github.event.inputs.lz4kd != 'true' }}
+      - name: 📤 Upload AnyKernel3 (上传 AnyKernel3)
+        if: ${{ github.event.inputs.lz4kd != 'Open' }}
         uses: actions/upload-artifact@v4
         with:
-         name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+         name: AnyKernel3_SukiSU_Ultra_lz4_zstd_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
          path: ./AnyKernel3/*
          
-      - name: 📝 Find zram.ko & crypto_zstdn.ko
-        if: ${{ github.event.inputs.lz4kd == 'true' }}
+      - name: 📝 Find zram.ko & crypto_zstdn.ko (查找 zram.ko & crypto_zstdn.ko)
+        if: ${{ github.event.inputs.lz4kd == 'Open' }}
         run: |
           find -name zram.ko
           find -name crypto_zstdn.ko
           
-      - name: 📤 Upload zram.ko
-        if: ${{ github.event.inputs.lz4kd == 'true' }} || ${{ github.event.inputs.KERNEL_VERSION == '6.1' }} 
+      - name: 📤 Upload zram.ko (上传 zram.ko)
+        if: ${{ github.event.inputs.lz4kd == 'Open' }}
         uses: actions/upload-artifact@v4
         with:
           name: zram.ko
