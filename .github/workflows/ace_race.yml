@@ -13,7 +13,7 @@ on:
           - 'sm8475'
           - 'sm7675'
           - 'mt6895'
-        default: 'sm8650'
+        default: 'mt6895'
       FEIL:
         description: "手机型号"
         required: true
@@ -37,7 +37,7 @@ on:
           - 'oneplus_10_pro'
           - 'oneplus_ace_3v'
           - 'oneplus_ace_race'
-        default: 'oneplus_12'
+        default: 'oneplus_ace_race'
       CPUD:
         description: "处理器代号"
         required: true
@@ -46,7 +46,7 @@ on:
           - 'pineapple'
           - 'kalama'
           - 'waipio'
-        default: 'pineapple'
+        default: 'waipio'
       ANDROID_VERSION:
         description: "内核安卓版本"
         required: true
@@ -55,7 +55,7 @@ on:
           - 'android14'
           - 'android13'
           - 'android12'
-        default: 'android14'
+        default: 'android12'
       KERNEL_VERSION:
         description: "内核版本"
         required: true
@@ -64,7 +64,7 @@ on:
           - '6.1'
           - '5.15'
           - '5.10'
-        default: '6.1'
+        default: '5.10'
       KPM:
        description: "是否启用KPM"
        required: true
@@ -80,7 +80,7 @@ on:
        options:
           - 'Open'
           - 'Close'
-       default: 'Close'
+       default: 'Open'
       bbr:
        description: "是否启用bbr算法(优化上行数据, 对手机日用无太大意义甚至可能负优化)"
        required: true
