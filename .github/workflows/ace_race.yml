@@ -180,6 +180,10 @@ jobs:
          sed -i '$s|echo "\$res"|echo "-oki-xiaoxiaow"|' kernel_platform/common/scripts/setlocalversion            
          sed -i '$s|echo "\$res"|echo "-oki-xiaoxiaow"|' kernel_platform/msm-kernel/scripts/setlocalversion
          sed -i '$s|echo "\$res"|echo "-oki-xiaoxiaow"|' kernel_platform/external/dtc/scripts/setlocalversion
+
+      - name: find
+        run: |
+          find ld.lld
           
       - name: ⚙️ Set SukiSU Ultra (设置SuKiSU Ultra)
         run: |
