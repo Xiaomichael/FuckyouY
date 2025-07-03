@@ -183,7 +183,7 @@ jobs:
 
       - name: find
         run: |
-          find ld.lld
+          find -name ld.lld
           
       - name: ⚙️ Set SukiSU Ultra (设置SuKiSU Ultra)
         run: |
