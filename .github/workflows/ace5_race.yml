@@ -8,8 +8,8 @@ on:
         required: true
         type: choice
         options:
-          - 'mt8969'
-        default: 'mt8969'
+          - 'mt6989'
+        default: 'mt6989'
         
       FEIL:
         description: "手机型号"
