@@ -16,8 +16,8 @@ on:
         required: true
         type: choice
         options:
-          - 'oneplus_ac5_race'
-        default: 'oneplus_ac5_race'
+          - 'oneplus_ace5_race'
+        default: 'oneplus_ace5_race'
         
       CPUD:
         description: "处理器代号"
